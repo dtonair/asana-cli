@@ -11,8 +11,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"asana-cli/internal/asana"
-	"asana-cli/internal/config"
+	"asana-cli/asana"
+	"asana-cli/config"
 )
 
 // pageSize is the per-request page size used for paginated endpoints, matching

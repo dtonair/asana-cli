@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"asana-cli/internal/asana"
+	"asana-cli/asana"
 )
 
 func TestWriteSuccessJSON(t *testing.T) {

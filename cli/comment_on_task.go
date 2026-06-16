@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"asana-cli/internal/asana"
+	"asana-cli/asana"
 )
 
 func newCommentOnTaskCommand() *cobra.Command {
