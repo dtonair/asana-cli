@@ -1,4 +1,4 @@
-module asana-cli
+module github.com/dtonair/asana-cli
 
 go 1.24.5
 

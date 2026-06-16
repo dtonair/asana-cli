@@ -16,6 +16,15 @@ brew install asana-cli
 
 To upgrade later: `brew upgrade asana-cli`.
 
+### go install
+
+```bash
+go install github.com/dtonair/asana-cli/cmd/asana-cli@latest
+```
+
+This installs the `asana-cli` binary into `$(go env GOBIN)` (or `$(go env
+GOPATH)/bin`); make sure that directory is on your `PATH`.
+
 ### Build from source
 
 ```bash

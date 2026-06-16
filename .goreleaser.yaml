@@ -19,7 +19,7 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X asana-cli/cli.version={{ .Version }}
+      - -s -w -X github.com/dtonair/asana-cli/cli.version={{ .Version }}
 
 archives:
   - id: default

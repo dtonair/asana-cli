@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"asana-cli/asana"
+	"github.com/dtonair/asana-cli/asana"
 )
 
 // successEnvelope is the default machine-readable success output.
