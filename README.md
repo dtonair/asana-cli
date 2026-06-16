@@ -5,7 +5,18 @@ any agent (or human/script) can invoke Asana operations from the shell. Output i
 **JSON by default** for deterministic machine parsing; pass `--human` for readable
 summaries.
 
-## Install / Build
+## Install
+
+### Homebrew (recommended)
+
+```bash
+brew tap dtonair/tap
+brew install asana-cli
+```
+
+To upgrade later: `brew upgrade asana-cli`.
+
+### Build from source
 
 ```bash
 go build -o asana-cli ./cmd/asana-cli
@@ -14,6 +25,8 @@ go install ./cmd/asana-cli
 ```
 
 Requires Go 1.22+. The only third-party dependency is `spf13/cobra`.
+
+Check the installed version with `asana-cli --version`.
 
 ## Configuration
 

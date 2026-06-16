@@ -1,0 +1,55 @@
+version: 2
+
+project_name: asana-cli
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: asana-cli
+    main: ./cmd/asana-cli
+    binary: asana-cli
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X asana-cli/cli.version={{ .Version }}
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+
+brews:
+  - name: asana-cli
+    repository:
+      owner: dtonair
+      name: homebrew-tap
+      token: "{{ .Env.TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/dtonair/asana-cli"
+    description: "Asana CLI for agents and humans (JSON output by default)"
+    license: "MIT"
+    directory: Formula
+    install: |
+      bin.install "asana-cli"
+    test: |
+      system "#{bin}/asana-cli", "--version"

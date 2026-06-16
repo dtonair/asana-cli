@@ -46,11 +46,16 @@ var opts globalOptions
 // errNotImplemented is the placeholder returned by stub subcommands.
 var errNotImplemented = errors.New("not implemented")
 
+// version is the CLI version, overridden at build time via -ldflags
+// "-X asana-cli/cli.version=<value>" (see .goreleaser.yaml).
+var version = "dev"
+
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "asana-cli",
 		Short:         "CLI for Asana operations (JSON output by default)",
 		Long:          "asana-cli exposes Asana read/comment operations as subcommands.\nOutput is JSON by default; pass --human for readable summaries.",
+		Version:       version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
