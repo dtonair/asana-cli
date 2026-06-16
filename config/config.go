@@ -1,17 +1,30 @@
-// Package config loads Asana credentials from the environment, mirroring the
-// env-variable subset of the original Pi extension's configuration.
+// Package config loads Asana credentials from the environment and an optional
+// YAML config file (~/.config/asana-cli.yaml). Environment variables take
+// precedence over file values; the file lets users persist credentials without
+// exporting env vars on every shell.
 package config
 
 import (
 	"errors"
+	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // Config holds the resolved Asana credentials.
 type Config struct {
 	AccessToken      string
 	DefaultWorkspace string
+}
+
+// fileConfig mirrors the on-disk YAML structure of the config file.
+type fileConfig struct {
+	AccessToken      string `yaml:"access_token"`
+	DefaultWorkspace string `yaml:"default_workspace"`
 }
 
 // Getenv is the signature of a single-variable environment lookup, allowing
@@ -23,21 +36,79 @@ func trimmed(get Getenv, name string) string {
 	return strings.TrimSpace(get(name))
 }
 
-// Load reads ASANA_ACCESS_TOKEN (required) and ASANA_DEFAULT_WORKSPACE
-// (optional) using the process environment.
-func Load() (Config, error) {
-	return LoadFrom(os.Getenv)
+// firstNonEmpty returns the first argument that is non-empty after trimming.
+func firstNonEmpty(vals ...string) string {
+	for _, v := range vals {
+		if s := strings.TrimSpace(v); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
-// LoadFrom is Load with an injectable environment lookup.
+// ConfigPath returns the resolved config file path: $ASANA_CONFIG when set,
+// else $XDG_CONFIG_HOME/asana-cli.yaml, else ~/.config/asana-cli.yaml. It
+// returns "" only when the home directory cannot be determined.
+func ConfigPath(get Getenv) string {
+	if p := trimmed(get, "ASANA_CONFIG"); p != "" {
+		return p
+	}
+	if dir := trimmed(get, "XDG_CONFIG_HOME"); dir != "" {
+		return filepath.Join(dir, "asana-cli.yaml")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".config", "asana-cli.yaml")
+}
+
+// loadFile reads and parses the config file at path. A missing file is not an
+// error and yields a zero fileConfig.
+func loadFile(path string) (fileConfig, error) {
+	if path == "" {
+		return fileConfig{}, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return fileConfig{}, nil
+		}
+		return fileConfig{}, fmt.Errorf("read config %s: %w", path, err)
+	}
+	var fc fileConfig
+	if err := yaml.Unmarshal(data, &fc); err != nil {
+		return fileConfig{}, fmt.Errorf("parse config %s: %w", path, err)
+	}
+	return fc, nil
+}
+
+// Load resolves credentials from the config file and process environment.
+// Environment variables (ASANA_ACCESS_TOKEN, ASANA_DEFAULT_WORKSPACE) take
+// precedence over the corresponding file values.
+func Load() (Config, error) {
+	fc, err := loadFile(ConfigPath(os.Getenv))
+	if err != nil {
+		return Config{}, err
+	}
+	return resolve(os.Getenv, fc)
+}
+
+// LoadFrom resolves credentials from the given environment only (no config
+// file). It is retained for callers and tests that exercise env-only behavior.
 func LoadFrom(get Getenv) (Config, error) {
-	token := trimmed(get, "ASANA_ACCESS_TOKEN")
+	return resolve(get, fileConfig{})
+}
+
+// resolve merges environment values (highest precedence) over file values.
+func resolve(get Getenv, fc fileConfig) (Config, error) {
+	token := firstNonEmpty(trimmed(get, "ASANA_ACCESS_TOKEN"), fc.AccessToken)
 	if token == "" {
-		return Config{}, errors.New("Set ASANA_ACCESS_TOKEN before using Asana tools.")
+		return Config{}, errors.New("Set ASANA_ACCESS_TOKEN or add access_token to ~/.config/asana-cli.yaml before using Asana tools.")
 	}
 	return Config{
 		AccessToken:      token,
-		DefaultWorkspace: trimmed(get, "ASANA_DEFAULT_WORKSPACE"),
+		DefaultWorkspace: firstNonEmpty(trimmed(get, "ASANA_DEFAULT_WORKSPACE"), fc.DefaultWorkspace),
 	}, nil
 }
 

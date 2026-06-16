@@ -39,15 +39,33 @@ Check the installed version with `asana-cli --version`.
 
 ## Configuration
 
-Credentials are read from environment variables only:
+Credentials come from environment variables or a YAML config file. Environment
+variables take precedence over the file.
+
+### Environment variables
 
 ```bash
 export ASANA_ACCESS_TOKEN="your-asana-personal-access-token"   # required
 export ASANA_DEFAULT_WORKSPACE="workspace-gid"                 # optional
 ```
 
-`ASANA_DEFAULT_WORKSPACE` is optional, but workspace-scoped commands require either
-that variable or an explicit `--workspace-gid`.
+### Config file
+
+If `ASANA_ACCESS_TOKEN` is not set, the CLI reads `~/.config/asana-cli.yaml`
+(override the path with `$ASANA_CONFIG`, or relocate via `$XDG_CONFIG_HOME`):
+
+```yaml
+# ~/.config/asana-cli.yaml
+access_token: your-asana-personal-access-token   # required
+default_workspace: workspace-gid                  # optional
+```
+
+Each value is used only when the corresponding env var is unset, so you can keep
+a token in the file and still override it per-shell with `ASANA_ACCESS_TOKEN`.
+Keep the file private (`chmod 600 ~/.config/asana-cli.yaml`).
+
+`default_workspace`/`ASANA_DEFAULT_WORKSPACE` is optional, but workspace-scoped
+commands require either it or an explicit `--workspace-gid`.
 
 Recommended token scopes: `users:read`, `workspaces:read`, `projects:read`,
 `tasks:read`, `stories:read`, and `stories:write` for `comment-on-task`.
@@ -141,6 +159,9 @@ variable (test-only seam; not a user-facing flag).
 
 ## Security
 
-The token is read from the environment only, never written to disk, and never
-included in any rendered output, error, or `--verbose` log line. All requests go
-over HTTPS to `https://app.asana.com/api/1.0`.
+The token is read from the environment or, as a fallback, from
+`~/.config/asana-cli.yaml`. The CLI never writes the token to disk itself
+(you create the config file) and never includes it in any rendered output,
+error, or `--verbose` log line. If you store the token in the config file,
+restrict its permissions (`chmod 600`). All requests go over HTTPS to
+`https://app.asana.com/api/1.0`.

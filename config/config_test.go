@@ -1,6 +1,10 @@
 package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 // envFunc builds a Getenv from a map.
 func envFunc(m map[string]string) Getenv {
@@ -68,8 +72,84 @@ func TestLoadFrom(t *testing.T) {
 
 func TestMissingTokenMessage(t *testing.T) {
 	_, err := LoadFrom(envFunc(nil))
-	if err == nil || err.Error() != "Set ASANA_ACCESS_TOKEN before using Asana tools." {
+	if err == nil || err.Error() != "Set ASANA_ACCESS_TOKEN or add access_token to ~/.config/asana-cli.yaml before using Asana tools." {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestConfigPath(t *testing.T) {
+	if got := ConfigPath(envFunc(map[string]string{"ASANA_CONFIG": "/tmp/x.yaml"})); got != "/tmp/x.yaml" {
+		t.Errorf("ASANA_CONFIG override: got %q", got)
+	}
+	got := ConfigPath(envFunc(map[string]string{"XDG_CONFIG_HOME": "/cfg"}))
+	if want := filepath.Join("/cfg", "asana-cli.yaml"); got != want {
+		t.Errorf("XDG_CONFIG_HOME: got %q want %q", got, want)
+	}
+}
+
+// writeConfig writes a config file into a temp dir and returns its path.
+func writeConfig(t *testing.T, body string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "asana-cli.yaml")
+	if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	return path
+}
+
+func TestLoadReadsFile(t *testing.T) {
+	path := writeConfig(t, "access_token: file-tok\ndefault_workspace: file-ws\n")
+	t.Setenv("ASANA_CONFIG", path)
+	t.Setenv("ASANA_ACCESS_TOKEN", "")
+	t.Setenv("ASANA_DEFAULT_WORKSPACE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AccessToken != "file-tok" || cfg.DefaultWorkspace != "file-ws" {
+		t.Fatalf("got %+v", cfg)
+	}
+}
+
+func TestEnvOverridesFile(t *testing.T) {
+	path := writeConfig(t, "access_token: file-tok\ndefault_workspace: file-ws\n")
+	t.Setenv("ASANA_CONFIG", path)
+	t.Setenv("ASANA_ACCESS_TOKEN", "env-tok")
+	t.Setenv("ASANA_DEFAULT_WORKSPACE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AccessToken != "env-tok" {
+		t.Errorf("env should win for token, got %q", cfg.AccessToken)
+	}
+	if cfg.DefaultWorkspace != "file-ws" {
+		t.Errorf("file workspace should be used, got %q", cfg.DefaultWorkspace)
+	}
+}
+
+func TestLoadMissingFileIsNotError(t *testing.T) {
+	t.Setenv("ASANA_CONFIG", filepath.Join(t.TempDir(), "absent.yaml"))
+	t.Setenv("ASANA_ACCESS_TOKEN", "env-tok")
+	t.Setenv("ASANA_DEFAULT_WORKSPACE", "")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.AccessToken != "env-tok" {
+		t.Fatalf("got %+v", cfg)
+	}
+}
+
+func TestLoadInvalidFileErrors(t *testing.T) {
+	path := writeConfig(t, "access_token: [unterminated\n")
+	t.Setenv("ASANA_CONFIG", path)
+	t.Setenv("ASANA_ACCESS_TOKEN", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected parse error")
 	}
 }
 

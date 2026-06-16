@@ -13,8 +13,8 @@ default; `--human` gives text summaries.
 
 ```
 cmd/asana-cli/main.go          # entrypoint: cli.Execute() -> os.Exit
-internal/config/               # env-only credential loading + workspace resolution
-  config.go                    #   Load(), LoadFrom(getenv), Config.ResolveWorkspace
+internal/config/               # credential loading (env + ~/.config/asana-cli.yaml) + workspace resolution
+  config.go                    #   Load() (file+env, env wins), LoadFrom(getenv) (env-only), ConfigPath, Config.ResolveWorkspace
 internal/asana/                # HTTP client (ported from src/asana-client.ts)
   client.go                    #   Client.Request, Client.Paginate, HTTPError, EncodePathSegment
 internal/cli/                  # Cobra command tree (one file per subcommand)
